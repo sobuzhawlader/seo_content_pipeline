@@ -1,13 +1,12 @@
 import json
-from typing import List, Dict, Any
-from google import genai
+from typing import Dict, Any
+from config import get_genai_client
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-client = genai.Client()
-
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-def build_topical_cluster_map(seed_niche: str) -> Dict[str, Any]:
+def build_topical_cluster_map(seed_niche: str, api_key: str = None) -> Dict[str, Any]:
     """Generates a comprehensive pillar and cluster topical map for establishing topical authority."""
+    client = get_genai_client(api_key)
     prompt = f"""
     You are an elite SEO Strategist specializing in Topical Authority and Semantic Clustering.
     Generate a complete Pillar-and-Cluster topical hierarchy for the seed niche: "{seed_niche}".

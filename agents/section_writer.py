@@ -1,11 +1,10 @@
 import json
-from google import genai
+from config import get_genai_client
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-client = genai.Client()
-
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-def call_gemini_with_retry(prompt: str, mime_type: str = None):
+def call_gemini_with_retry(prompt: str, mime_type: str = None, api_key: str = None):
+    client = get_genai_client(api_key)
     config = {"response_mime_type": mime_type} if mime_type else {}
     return client.models.generate_content(
         model="gemini-2.5-flash",
@@ -13,7 +12,7 @@ def call_gemini_with_retry(prompt: str, mime_type: str = None):
         config=config
     )
 
-def generate_longform_article(brief: dict, live_articles: list[dict]) -> dict:
+def generate_longform_article(brief: dict, live_articles: list[dict], api_key: str = None) -> dict:
     sections_html = []
     running_context = ""
     
@@ -29,7 +28,7 @@ def generate_longform_article(brief: dict, live_articles: list[dict]) -> dict:
     - Clearly outline what key insights the reader will gain.
     - Output strictly semantic HTML with <p> tags.
     """
-    intro_html = call_gemini_with_retry(intro_prompt).text
+    intro_html = call_gemini_with_retry(intro_prompt, api_key=api_key).text
     sections_html.append(intro_html)
     running_context += f"Intro summary: {intro_html[:200]}...\n"
 
@@ -52,7 +51,7 @@ def generate_longform_article(brief: dict, live_articles: list[dict]) -> dict:
         - Provide actionable examples, statistics, or step-by-step breakdowns.
         - Naturally hyperlink relevant keywords using the available internal links if appropriate.
         """
-        sec_res = call_gemini_with_retry(section_prompt).text
+        sec_res = call_gemini_with_retry(section_prompt, api_key=api_key).text
         sections_html.append(sec_res)
         running_context += f"Section '{sec['h2']}' key takeaway: {sec_res[:150]}...\n"
 
@@ -64,7 +63,7 @@ def generate_longform_article(brief: dict, live_articles: list[dict]) -> dict:
     2. Valid Schema.org FAQPage JSON-LD.
     Respond in strict JSON with keys: "faq_html", "schema_json".
     """
-    faq_res = call_gemini_with_retry(faq_prompt, mime_type="application/json")
+    faq_res = call_gemini_with_retry(faq_prompt, mime_type="application/json", api_key=api_key)
     faq_data = json.loads(faq_res.text)
     sections_html.append(faq_data.get("faq_html", ""))
 

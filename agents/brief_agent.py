@@ -1,11 +1,10 @@
 import json
-from google import genai
+from config import get_genai_client
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-client = genai.Client()
-
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-def generate_content_brief(topic: str, serp_intel: dict) -> dict:
+def generate_content_brief(topic: str, serp_intel: dict, api_key: str = None) -> dict:
+    client = get_genai_client(api_key)
     prompt = f"""
     You are an expert Content Strategist & Semantic SEO Specialist.
     Create an exhaustive, data-driven Content Brief for the topic: "{topic}".

@@ -7,7 +7,6 @@ from agents.research_agent import SerpResearchAgent
 from agents.brief_agent import generate_content_brief
 from agents.section_writer import generate_longform_article
 from agents.fact_checker import verify_and_ground_draft
-from agents.media_agent import MediaAgent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,7 +26,12 @@ def filter_relevant_links(target_title: str, live_articles: List[Dict[str, Any]]
     scored_articles.sort(key=lambda x: x[0], reverse=True)
     return [item[1] for item in scored_articles[:max_links]]
 
-def background_generation_pipeline(topic_id: int, serper_key: str = None, unsplash_key: str = None):
+def background_generation_pipeline(
+    topic_id: int,
+    serper_key: str = None,
+    unsplash_key: str = None,
+    gemini_key: str = None
+):
     """Executes the full pipeline asynchronously and updates SQLite status."""
     with Session(engine) as session:
         topic = session.get(TopicNode, topic_id)
@@ -47,7 +51,7 @@ def background_generation_pipeline(topic_id: int, serper_key: str = None, unspla
             logger.info(f"Step 1 Complete: SERP Intelligence gathered.")
 
             # 2. Content Brief
-            brief = generate_content_brief(topic.title, intel)
+            brief = generate_content_brief(topic.title, intel, api_key=gemini_key)
             logger.info(f"Step 2 Complete: Content Brief generated.")
 
             # 3. Contextual Link Filtering & Section Writing
@@ -57,11 +61,11 @@ def background_generation_pipeline(topic_id: int, serper_key: str = None, unspla
                 for t in raw_live_topics
             ]
             relevant_links = filter_relevant_links(topic.title, all_live_articles, max_links=5)
-            raw_article = generate_longform_article(brief, relevant_links)
+            raw_article = generate_longform_article(brief, relevant_links, api_key=gemini_key)
             logger.info(f"Step 3 Complete: Longform drafted ({raw_article.get('word_count')} words).")
 
             # 4. Fact-Checking & Grounding
-            checked_article = verify_and_ground_draft(raw_article["content_html"], topic.title)
+            checked_article = verify_and_ground_draft(raw_article["content_html"], topic.title, api_key=gemini_key)
             final_html = checked_article.get("corrected_html", raw_article["content_html"])
             logger.info(f"Step 4 Complete: Fact-checking and grounding finished.")
 

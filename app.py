@@ -12,6 +12,19 @@ import config
 init_db()
 
 st.set_page_config(page_title="SEO Pipeline Control Center", layout="wide", page_icon="🚀")
+
+# ----------------- SIDEBAR: API Keys & Credentials -----------------
+with st.sidebar:
+    st.title("⚙️ API Configuration")
+    st.write("Configure your API credentials below. If set in Streamlit Secrets or .env, they are loaded automatically.")
+    
+    gemini_key = st.text_input("Gemini API Key:", value=config.GEMINI_API_KEY, type="password", help="Required for content generation & brief planning")
+    serper_key = st.text_input("Serper API Key:", value=config.SERPER_API_KEY, type="password", help="For Google SERP scraping")
+    unsplash_key = st.text_input("Unsplash Client ID:", value=config.UNSPLASH_CLIENT_ID, type="password", help="For featured images (optional)")
+    
+    st.divider()
+    st.caption("Autonomous SEO Agent Pipeline v1.0")
+
 st.title("Autonomous SEO Content Pipeline Control Center")
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -25,23 +38,26 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 # ----------------- TAB 1: Input & Enqueue -----------------
 with tab1:
     st.header("Enqueue Target Topic for Pipeline Generation")
-    col1, col2 = st.columns(2)
-    with col1:
-        topic_title = st.text_input("Enter Target Keyword / Topic:", placeholder="e.g. Best AI Tools for Digital Marketing 2026")
-    with col2:
-        serper_key = st.text_input("Serper API Key:", value=config.SERPER_API_KEY, type="password")
-        unsplash_key = st.text_input("Unsplash Client ID (Optional):", value=config.UNSPLASH_CLIENT_ID, type="password")
+    topic_title = st.text_input("Enter Target Keyword / Topic:", placeholder="e.g. Best AI Tools for Digital Marketing 2026")
 
     if st.button("🚀 Enqueue Topic for Generation", use_container_width=True):
         if not topic_title.strip():
             st.warning("Please enter a valid topic or keyword!")
+        elif not gemini_key.strip():
+            st.error("Please enter a Gemini API Key in the left sidebar!")
         else:
             with Session(engine) as session:
                 node = TopicNode(title=topic_title.strip(), status="pending")
                 session.add(node)
                 session.commit()
                 session.refresh(node)
-                executor.submit(background_generation_pipeline, node.id, serper_key, unsplash_key)
+                executor.submit(
+                    background_generation_pipeline,
+                    node.id,
+                    serper_key.strip() or None,
+                    unsplash_key.strip() or None,
+                    gemini_key.strip() or None
+                )
             st.success(f"Topic '{topic_title}' enqueued successfully! Check progress in Tab 3.")
 
 # ----------------- TAB 2: Topical Authority Clusters -----------------
@@ -53,10 +69,12 @@ with tab2:
     if st.button("Generate Topical Map", use_container_width=True):
         if not niche_input.strip():
             st.warning("Please enter a seed niche!")
+        elif not gemini_key.strip():
+            st.error("Please enter a Gemini API Key in the left sidebar!")
         else:
             with st.spinner("Analyzing semantic landscape and building cluster map..."):
                 try:
-                    cluster_data = build_topical_cluster_map(niche_input.strip())
+                    cluster_data = build_topical_cluster_map(niche_input.strip(), api_key=gemini_key.strip())
                     st.subheader("🏛️ Pillar Page Recommendation")
                     pillar = cluster_data.get("pillar_page", {})
                     st.info(f"**Title:** {pillar.get('title')}\n\n**Keyword:** `{pillar.get('primary_keyword')}` | **Intent:** {pillar.get('search_intent')}")
@@ -74,7 +92,13 @@ with tab2:
                                     session.add(node)
                                     session.commit()
                                     session.refresh(node)
-                                    executor.submit(background_generation_pipeline, node.id, serper_key, unsplash_key)
+                                    executor.submit(
+                                        background_generation_pipeline,
+                                        node.id,
+                                        serper_key.strip() or None,
+                                        unsplash_key.strip() or None,
+                                        gemini_key.strip() or None
+                                    )
                                 st.success(f"Enqueued '{c.get('title')}'!")
                 except Exception as e:
                     st.error(f"Failed to generate cluster map: {str(e)}")
@@ -188,8 +212,9 @@ with tab5:
                         try:
                             with st.spinner("Publishing to WordPress..."):
                                 featured_media_id = None
-                                if include_image and config.UNSPLASH_CLIENT_ID:
-                                    img_bytes, alt = MediaAgent.fetch_unsplash_image(selected_pub_topic.title, config.UNSPLASH_CLIENT_ID)
+                                active_unsplash = unsplash_key.strip() or config.UNSPLASH_CLIENT_ID
+                                if include_image and active_unsplash:
+                                    img_bytes, alt = MediaAgent.fetch_unsplash_image(selected_pub_topic.title, active_unsplash)
                                     if img_bytes:
                                         featured_media_id = MediaAgent.upload_to_wordpress_media(
                                             wp_url, wp_user, wp_pass, img_bytes, f"featured_{selected_pub_topic.id}.jpg", alt
