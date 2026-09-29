@@ -6,11 +6,17 @@ class SectionBrief(BaseModel):
     h3s: List[str] = Field(default_factory=list)
     talking_points: List[str] = Field(default_factory=list)
     entities_to_include: List[str] = Field(default_factory=list)
+    format_directive: Optional[str] = "prose"  # prose, table, bulleted_list, step_by_step
+    featured_snippet_target: Optional[str] = None  # direct 40-50 word answer guideline
 
 class ArticleBrief(BaseModel):
     target_keyword: str
+    central_entity: Optional[str] = None
     search_intent: str
     recommended_word_count: int = 2500
+    information_gain_angles: List[str] = Field(default_factory=list)  # Content gaps competitors missed
+    semantic_entity_triples: List[str] = Field(default_factory=list)  # Subject-Predicate-Object triples
+    next_logical_query: Optional[str] = None  # User journey next step
     sections: List[SectionBrief]
     faq_list: List[Dict[str, str]] = Field(default_factory=list)
     meta_description: Optional[str] = None

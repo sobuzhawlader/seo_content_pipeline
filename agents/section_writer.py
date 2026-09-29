@@ -21,19 +21,51 @@ def generate_longform_article(brief: dict, live_articles: list[dict], api_key: s
     if not links_context:
         links_context = "No previous internal articles currently available."
 
-    # 2. Write Compelling Introduction
+    # 2. Extract Semantic & Information Gain Directives
+    info_gain = "\n".join([f"• {angle}" for angle in brief.get("information_gain_angles", [])])
+    if not info_gain:
+        info_gain = "Focus on first-hand analytical depth and concrete numbers."
+        
+    semantic_triples = "\n".join([f"• {triple}" for triple in brief.get("semantic_entity_triples", [])])
+    if not semantic_triples:
+        semantic_triples = "Maintain clear subject-predicate-object entity relationships."
+
+    # 3. Write Compelling Introduction (Entity-Centric Hook)
     intro_prompt = f"""
-    Write a comprehensive, engaging introduction for the guide: '{brief['target_keyword']}'.
-    - Hook the reader without generic clichés (avoid 'In today's fast-paced world').
-    - Clearly outline what key insights the reader will gain.
-    - Output strictly semantic HTML with <p> tags.
+    Write a high-authority, engaging introduction for the comprehensive guide: '{brief['target_keyword']}'.
+    
+    Core Subject Context:
+    - Central Entity: {brief.get('central_entity', brief['target_keyword'])}
+    - Search Intent: {brief.get('search_intent', 'Informational')}
+    - Key Information Gain Focus:
+    {info_gain}
+    
+    Guidelines:
+    - Hook the reader immediately with an analytical or technical reality (STRICTLY avoid clichés like 'In today's fast-paced digital landscape' or 'Have you ever wondered').
+    - State clearly what specific answers and advanced breakdowns the reader will unlock.
+    - Output strictly semantic HTML with clean <p> tags.
     """
     intro_html = call_gemini_with_retry(intro_prompt, api_key=api_key).text
     sections_html.append(intro_html)
     running_context += f"Intro summary: {intro_html[:200]}...\n"
 
-    # 3. Sequentially Write Each H2 Section
+    # 4. Sequentially Write Each H2 Section with Information-Gain Depth
     for idx, sec in enumerate(brief.get("sections", [])):
+        snippet_instruction = ""
+        if sec.get("featured_snippet_target"):
+            snippet_instruction = f"""
+        POSITION ZERO SNIPPET RULE:
+        In the very first paragraph immediately after the <h2> heading, provide a crisp, definitive 40-50 word direct answer to capture Google's Featured Snippet:
+        Guideline: "{sec['featured_snippet_target']}"
+            """
+
+        format_instruction = ""
+        fmt = sec.get("format_directive", "prose")
+        if fmt == "comparison_table":
+            format_instruction = "STRUCTURE DIRECTIVE: Include a comprehensive semantic HTML <table> (with <thead>, <tbody>, <th>, <td>) comparing relevant options, criteria, or metrics."
+        elif fmt in ["step_by_step_list", "bulleted_list"]:
+            format_instruction = "STRUCTURE DIRECTIVE: Include an organized HTML ordered <ol> or unordered <ul> list with detailed, step-by-step action items."
+
         section_prompt = f"""
         Write Section {idx+1}:
         Heading: {sec['h2']}
@@ -41,25 +73,35 @@ def generate_longform_article(brief: dict, live_articles: list[dict], api_key: s
         Key talking points: {sec.get('talking_points', [])}
         Entities to integrate naturally: {sec.get('entities_to_include', [])}
         
+        Semantic Entity Relationships to reinforce:
+        {semantic_triples}
+        
+        Information Gain Directives (Make sure this section beats generic SERP content):
+        {info_gain}
+        {snippet_instruction}
+        {format_instruction}
+        
         Previous Context: {running_context}
-        Available Internal Links to cite if relevant:
+        Available Internal Links to naturally hyperlink if relevant:
         {links_context}
         
-        Guidelines:
-        - Output semantic HTML with <h2>, <h3>, <p>, <ul>, <li>, or <table> tags.
-        - Ensure thorough depth (400-600 words for this section alone).
-        - Provide actionable examples, statistics, or step-by-step breakdowns.
-        - Naturally hyperlink relevant keywords using the available internal links if appropriate.
+        Depth & Style Guidelines:
+        - Output strictly semantic HTML with <h2>, <h3>, <p>, <ul>, <ol>, <li>, <table> tags.
+        - Ensure 450–650 words of technical depth for this section alone.
+        - Include concrete examples, benchmarks, formulas, or troubleshooting solutions.
+        - Hyperlink relevant anchor keywords naturally if they match available internal links.
         """
         sec_res = call_gemini_with_retry(section_prompt, api_key=api_key).text
         sections_html.append(sec_res)
         running_context += f"Section '{sec['h2']}' key takeaway: {sec_res[:150]}...\n"
 
-    # 4. Generate FAQ Section & FAQPage Schema
+    # 5. Generate FAQ Section & FAQPage Schema
     faq_prompt = f"""
     Write the FAQ section based on these questions: {json.dumps(brief.get('faq_list', []))}.
+    Next Logical Query to optionally address: {brief.get('next_logical_query', 'N/A')}.
+    
     Output:
-    1. HTML markup for the FAQ section (<h3> for questions, <p> for answers).
+    1. Semantic HTML markup for the FAQ section (<h3> for questions, <p> for direct answers).
     2. Valid Schema.org FAQPage JSON-LD.
     Respond in strict JSON with keys: "faq_html", "schema_json".
     """
