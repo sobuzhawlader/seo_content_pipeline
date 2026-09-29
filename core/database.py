@@ -18,6 +18,7 @@ class ArticleContent(SQLModel, table=True):
     content_html: str
     content_markdown: str = ""
     schema_json: str = "{}"
+    brief_json: Optional[str] = "{}"
     
     topic: Optional[TopicNode] = Relationship(back_populates="articles")
 
