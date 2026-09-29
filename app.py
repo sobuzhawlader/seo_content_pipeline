@@ -386,7 +386,8 @@ with tab1:
 # ----------------- TAB 2: TOPICAL CLUSTERS -----------------
 with tab2:
     st.subheader("Topical Authority Map & Cluster Discovery")
-    st.markdown("Discover the high-ranking **Pillar Page** and 4–6 supporting **Subtopic Clusters** for any broad niche to dominate topical authority.")
+    st.caption("Powered by Behzad Mirzapour & Koray Tuğberk Gübür's Holistic Semantic SEO Framework")
+    st.markdown("Discover the **Central Entity**, **Source Context**, **Core Pillar Page**, and **Tri-Tier Supporting Clusters** to establish unbreakable topical authority.")
     
     niche_col, map_btn_col = st.columns([3, 1])
     with niche_col:
@@ -404,29 +405,66 @@ with tab2:
         elif not gemini_key.strip():
             st.error("Please configure your Gemini API Key in the sidebar.")
         else:
-            with st.spinner("Analyzing semantic hierarchy and competitor graphs..."):
+            with st.spinner("Analyzing semantic hierarchy according to Behzad Mirzapour's framework..."):
                 try:
                     cluster_data = build_topical_cluster_map(niche_input.strip(), api_key=gemini_key.strip())
+                    
+                    central_entity = cluster_data.get("central_entity", niche_input.strip())
+                    source_context = cluster_data.get("source_context", "Domain Authority Perspective")
+                    
+                    st.markdown(f"""
+                    <div style="display: flex; gap: 14px; margin: 16px 0;">
+                        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 12px 18px; flex: 1;">
+                            <div style="font-size: 11px; font-weight: 700; color: #A5B4FC; text-transform: uppercase;">🌐 Central Entity</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #FFFFFF; margin-top: 2px;">{central_entity}</div>
+                        </div>
+                        <div style="background: rgba(236, 72, 153, 0.1); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 12px; padding: 12px 18px; flex: 1;">
+                            <div style="font-size: 11px; font-weight: 700; color: #F472B6; text-transform: uppercase;">🎯 Source Context (Domain Angle)</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #FFFFFF; margin-top: 2px;">{source_context}</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                     pillar = cluster_data.get("pillar_page", {})
                     st.markdown(f"""
                     <div class="pillar-box">
-                        <div style="font-size: 12px; font-weight: 700; color: #818CF8; text-transform: uppercase; letter-spacing: 0.5px;">👑 Core Pillar Page</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #FFFFFF; margin: 6px 0;">{pillar.get('title')}</div>
-                        <div style="font-size: 13px; color: #94A3B8;">Primary Keyword: <code>{pillar.get('primary_keyword')}</code> &nbsp;•&nbsp; Intent: <strong>{pillar.get('search_intent')}</strong></div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 12px; font-weight: 700; color: #818CF8; text-transform: uppercase; letter-spacing: 0.5px;">👑 Core Pillar Page (Foundation Node)</span>
+                            <span style="background: rgba(129, 140, 248, 0.2); padding: 3px 10px; border-radius: 9999px; font-size: 11px; color: #C7D2FE; font-weight: 600;">{pillar.get('target_word_count', 3500)} Words</span>
+                        </div>
+                        <div style="font-size: 21px; font-weight: 800; color: #FFFFFF; margin: 8px 0 4px 0;">{pillar.get('title')}</div>
+                        <div style="font-size: 13px; color: #CBD5E1; margin-bottom: 8px;"><em>"{pillar.get('semantic_definition', '')}"</em></div>
+                        <div style="font-size: 12px; color: #94A3B8;">Primary Keyword: <code style="color: #A5B4FC;">{pillar.get('primary_keyword')}</code> &nbsp;•&nbsp; Intent: <strong>{pillar.get('search_intent')}</strong></div>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    st.markdown("#### 🔗 Supporting Cluster Articles")
+                    st.markdown("#### 🔗 Tri-Tier Semantic Clusters & Anchor Text Matrix")
                     clusters = cluster_data.get("clusters", [])
                     for i, c in enumerate(clusters):
+                        tier = c.get("tier", "Outer")
+                        tier_color = {
+                            "Core": "#F59E0B",
+                            "Contextual Bridge": "#38BDF8",
+                            "Outer": "#A855F7"
+                        }.get(tier, "#94A3B8")
+                        
                         with st.container():
                             col_c_text, col_c_action = st.columns([3, 1])
                             with col_c_text:
                                 st.markdown(f"""
-                                <div style="background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 14px 18px; margin-bottom: 8px;">
-                                    <div style="font-weight: 600; color: #F1F5F9;">{i+1}. {c.get('title')}</div>
-                                    <div style="font-size: 12px; color: #64748B; margin-top: 4px;">Target Subtopic: <em>{c.get('target_subtopic')}</em> &nbsp;|&nbsp; Suggested Anchor: <code>{c.get('anchor_text_suggestion')}</code></div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <div style="font-weight: 700; color: #F8FAFC; font-size: 15px;">{i+1}. {c.get('title')}</div>
+                                        <div style="display: flex; gap: 6px;">
+                                            <span style="background: rgba(255,255,255,0.05); color: {tier_color}; border: 1px solid {tier_color}44; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700;">{tier}</span>
+                                            <span style="background: rgba(255,255,255,0.05); color: #94A3B8; border-radius: 6px; padding: 2px 8px; font-size: 11px;">{c.get('attribute_focus', '')}</span>
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 12px; color: #94A3B8; line-height: 1.6;">
+                                        🎯 <strong>Target Query:</strong> <code>{c.get('target_subtopic')}</code> &nbsp;|&nbsp; <strong>Intent:</strong> {c.get('search_intent')}<br>
+                                        🔗 <strong>Outbound to Pillar Anchor:</strong> <code style="color: #34D399;">"{c.get('outbound_anchor_text')}"</code><br>
+                                        📥 <strong>Inbound Anchor:</strong> <code style="color: #60A5FA;">"{c.get('inbound_anchor_text')}"</code> &nbsp;|&nbsp; <strong>Sibling Cross-Link:</strong> <em>"{c.get('sibling_link_suggestion')}"</em>
+                                    </div>
                                 </div>
                                 """, unsafe_allow_html=True)
                             with col_c_action:
