@@ -2,6 +2,27 @@ import json
 from config import get_genai_client
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+# ----------------- ANTI-AI DETECTION & HUMANIZATION PROTOCOL -----------------
+ANTI_AI_HUMANIZER_RULES = """
+CRITICAL ANTI-AI DETECTION & HUMANIZATION CONSTRAINTS:
+Your writing must bypass modern AI classifiers (Originality.ai, GPTZero, CopyLeaks) by mimicking natural human cognition and practitioner writing patterns.
+
+1. BANNED AI VOCABULARY & CRUTCHES (DO NOT USE ANY OF THESE UNDER ANY CIRCUMSTANCES):
+   - Never use: 'delve', 'tapestry', 'testament', 'beacon', 'furthermore', 'moreover', 'embark', 'harness', 'revolutionize', 'game-changer', 'plethora', 'multifaceted', 'in conclusion', 'to sum up', 'in a nutshell', 'navigating', 'fast-paced world', 'paramount', 'demystify', 'seamlessly', 'vital role', 'ever-evolving', 'shed light', 'unlock', 'pivotal', 'crucial', 'foster', 'underscore', 'it is important to remember'.
+
+2. BURSTINESS & RHYTHMIC VARIATION (HIGH BURSTINESS):
+   - Heavily randomize sentence lengths. Write a short, blunt 3-to-6 word sentence (e.g. 'That is a mistake.' or 'The numbers tell a different story.'). Follow it immediately with a nuanced 25-to-35 word sentence containing real constraints, em-dashes (—), or parenthetical trade-offs.
+   - Avoid monotonic sentence structures where every sentence starts with [Subject] + [Verb].
+
+3. PRACTITIONER AUTHORITY & FIRST-HAND PERSPECTIVE (EEAT):
+   - Write from the perspective of an experienced technical practitioner who works in the trenches.
+   - Use pragmatic observations: 'In live deployments,', 'The common gotcha here is', 'On paper this looks ideal, but in practice,', 'Here is where most teams get burned:'.
+
+4. NATURAL HUMAN SYNTAX & CONTRACTIONS:
+   - Use natural contractions freely ('it’s', 'don’t', 'can’t', 'we’ve', 'won’t'). Rigid uncontracted phrasing is the #1 telltale sign of machine generation.
+   - Never write synthetic mini-summaries or wrap-up sentences at the end of H2 sections. End sections directly on a technical point or actionable takeaway.
+"""
+
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 def call_gemini_with_retry(prompt: str, mime_type: str = None, api_key: str = None):
     client = get_genai_client(api_key)
@@ -24,39 +45,43 @@ def generate_longform_article(brief: dict, live_articles: list[dict], api_key: s
     # 2. Extract Semantic & Information Gain Directives
     info_gain = "\n".join([f"• {angle}" for angle in brief.get("information_gain_angles", [])])
     if not info_gain:
-        info_gain = "Focus on first-hand analytical depth and concrete numbers."
+        info_gain = "Focus on practical benchmarks and real-world implementation constraints."
         
     semantic_triples = "\n".join([f"• {triple}" for triple in brief.get("semantic_entity_triples", [])])
     if not semantic_triples:
         semantic_triples = "Maintain clear subject-predicate-object entity relationships."
 
-    # 3. Write Compelling Introduction (Entity-Centric Hook)
+    # 3. Write Compelling Introduction (100% Humanized Hook)
     intro_prompt = f"""
-    Write a high-authority, engaging introduction for the comprehensive guide: '{brief['target_keyword']}'.
+    You are an elite veteran industry analyst and technical writer.
+    Write an authentic, humanized introduction for the comprehensive guide: '{brief['target_keyword']}'.
     
     Core Subject Context:
     - Central Entity: {brief.get('central_entity', brief['target_keyword'])}
     - Search Intent: {brief.get('search_intent', 'Informational')}
-    - Key Information Gain Focus:
+    - Key Information Gain Angles to weave in:
     {info_gain}
     
-    Guidelines:
-    - Hook the reader immediately with an analytical or technical reality (STRICTLY avoid clichés like 'In today's fast-paced digital landscape' or 'Have you ever wondered').
-    - State clearly what specific answers and advanced breakdowns the reader will unlock.
+    {ANTI_AI_HUMANIZER_RULES}
+    
+    Introduction Specifics:
+    - Hook the reader immediately with an authentic, grounded observation or counter-intuitive truth.
+    - Zero generic fluff or introductory throat-clearing.
+    - Clearly establish what practical problem this guide solves.
     - Output strictly semantic HTML with clean <p> tags.
     """
     intro_html = call_gemini_with_retry(intro_prompt, api_key=api_key).text
     sections_html.append(intro_html)
     running_context += f"Intro summary: {intro_html[:200]}...\n"
 
-    # 4. Sequentially Write Each H2 Section with Information-Gain Depth
+    # 4. Sequentially Write Each H2 Section with Humanized Burstiness & Information Gain
     for idx, sec in enumerate(brief.get("sections", [])):
         snippet_instruction = ""
         if sec.get("featured_snippet_target"):
             snippet_instruction = f"""
         POSITION ZERO SNIPPET RULE:
-        In the very first paragraph immediately after the <h2> heading, provide a crisp, definitive 40-50 word direct answer to capture Google's Featured Snippet:
-        Guideline: "{sec['featured_snippet_target']}"
+        In the very first paragraph immediately after the <h2> heading, provide a crisp, direct 40-50 word answer to capture Google's Featured Snippet:
+        Target Guideline: "{sec['featured_snippet_target']}"
             """
 
         format_instruction = ""
@@ -76,7 +101,7 @@ def generate_longform_article(brief: dict, live_articles: list[dict], api_key: s
         Semantic Entity Relationships to reinforce:
         {semantic_triples}
         
-        Information Gain Directives (Make sure this section beats generic SERP content):
+        Information Gain Directives (Beat generic SERP content):
         {info_gain}
         {snippet_instruction}
         {format_instruction}
@@ -85,23 +110,29 @@ def generate_longform_article(brief: dict, live_articles: list[dict], api_key: s
         Available Internal Links to naturally hyperlink if relevant:
         {links_context}
         
+        {ANTI_AI_HUMANIZER_RULES}
+        
         Depth & Style Guidelines:
         - Output strictly semantic HTML with <h2>, <h3>, <p>, <ul>, <ol>, <li>, <table> tags.
         - Ensure 450–650 words of technical depth for this section alone.
         - Include concrete examples, benchmarks, formulas, or troubleshooting solutions.
+        - Use high burstiness (mix punchy short sentences with explanatory deep sentences).
         - Hyperlink relevant anchor keywords naturally if they match available internal links.
+        - DO NOT write a synthetic wrap-up or conclusion sentence at the end of this section.
         """
         sec_res = call_gemini_with_retry(section_prompt, api_key=api_key).text
         sections_html.append(sec_res)
         running_context += f"Section '{sec['h2']}' key takeaway: {sec_res[:150]}...\n"
 
-    # 5. Generate FAQ Section & FAQPage Schema
+    # 5. Generate FAQ Section & FAQPage Schema (Humanized, Direct Q&A)
     faq_prompt = f"""
-    Write the FAQ section based on these questions: {json.dumps(brief.get('faq_list', []))}.
+    Write a concise, humanized FAQ section based on these questions: {json.dumps(brief.get('faq_list', []))}.
     Next Logical Query to optionally address: {brief.get('next_logical_query', 'N/A')}.
     
+    {ANTI_AI_HUMANIZER_RULES}
+    
     Output:
-    1. Semantic HTML markup for the FAQ section (<h3> for questions, <p> for direct answers).
+    1. Semantic HTML markup for the FAQ section (<h3> for questions, <p> for direct, non-robotic answers).
     2. Valid Schema.org FAQPage JSON-LD.
     Respond in strict JSON with keys: "faq_html", "schema_json".
     """
