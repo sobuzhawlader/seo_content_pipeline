@@ -386,7 +386,7 @@ with tab1:
 # ----------------- TAB 2: TOPICAL CLUSTERS -----------------
 with tab2:
     st.subheader("Topical Authority Map & Cluster Discovery")
-    st.caption("Powered by Behzad Mirzapour & Koray Tuğberk Gübür's Holistic Semantic SEO Framework")
+    st.caption("Powered by Behzad Hussain (Rank Brilliance, Pakistan) & Koray Tuğberk Gübür's Semantic SEO Framework")
     st.markdown("Discover the **Central Entity**, **Source Context**, **Core Pillar Page**, and **Tri-Tier Supporting Clusters** to establish unbreakable topical authority.")
     
     niche_col, map_btn_col = st.columns([3, 1])
